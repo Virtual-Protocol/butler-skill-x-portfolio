@@ -1,0 +1,16 @@
+{
+  "name": "unfunded: the pocket is empty, so nothing trades",
+  "pocket": {
+    "cash": 0,
+    "funded": false
+  },
+  "expect": {
+    "acp": {
+      "count": 0
+    },
+    "fails": 0,
+    "state": {
+      "core.deployed": false
+    }
+  }
+}

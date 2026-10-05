@@ -1,0 +1,107 @@
+{
+  "name": "restart mid-rebalance: the stored sell resumes under its key and the worldview is kept",
+  "core": {
+    "preset": "deployed",
+    "set": {
+      "epoch": 2,
+      "pending": {
+        "epoch": 2,
+        "at": "@now-10m",
+        "why": "views persisted for TKNA",
+        "first": false,
+        "stop_buys": false,
+        "targets": {
+          "TKNA": 10,
+          "TKNB": 50,
+          "TKNC": 10
+        },
+        "legs": [
+          {
+            "sym": "TKNA",
+            "addr": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "chain": 8453,
+            "side": "sell",
+            "usd_plan": 1500,
+            "qty_plan": 750.0,
+            "px": 2.0,
+            "key": "@key:e2:TKNA:sell",
+            "amt": "750",
+            "st": "sending",
+            "sent_at": "@now-10m",
+            "tx": null,
+            "polls": 0,
+            "why": null,
+            "fill": null
+          },
+          {
+            "sym": "TKNB",
+            "addr": "0xb2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+            "chain": 8453,
+            "side": "buy",
+            "usd_plan": 1000,
+            "qty_plan": null,
+            "px": 1.0,
+            "key": "@key:e2:TKNB:buy",
+            "amt": null,
+            "st": "planned",
+            "sent_at": null,
+            "tx": null,
+            "polls": 0,
+            "why": null,
+            "fill": null
+          }
+        ]
+      },
+      "last_rebalance_at": "@now-10m"
+    }
+  },
+  "pocket": {
+    "cash": 1000.0
+  },
+  "state": {
+    "wv": {
+      "version": 7,
+      "at": "@now-1d",
+      "tok": {},
+      "acc": {},
+      "sent": {
+        "score": 0,
+        "why": "mixed"
+      },
+      "tw": {},
+      "oob": [],
+      "log": []
+    }
+  },
+  "executions": [
+    {
+      "idempotencyKey": "@key:e2:TKNA:sell",
+      "usdcReceived": 1500
+    },
+    {
+      "idempotencyKey": "@key:e2:TKNB:buy",
+      "amountOut": 998
+    }
+  ],
+  "expect": {
+    "acp": {
+      "count": 2,
+      "sides": [
+        "sell",
+        "buy"
+      ],
+      "amounts": [
+        "750",
+        "998"
+      ]
+    },
+    "notes_contain": [
+      "rebalance #2 settled"
+    ],
+    "state": {
+      "wv.version": 7,
+      "core.epoch": 2,
+      "core.pending": null
+    }
+  }
+}

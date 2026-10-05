@@ -1,0 +1,24 @@
+{
+  "name": "the owner zeroed the pocket: even a persisted change does not trade",
+  "core": {
+    "preset": "deployed",
+    "set": {
+      "cand": {
+        "TKNA": {
+          "pct": 10,
+          "n": 2
+        }
+      }
+    }
+  },
+  "pocket": {
+    "cash": 0,
+    "funded": false
+  },
+  "expect": {
+    "acp": {
+      "count": 0
+    },
+    "fails": 0
+  }
+}

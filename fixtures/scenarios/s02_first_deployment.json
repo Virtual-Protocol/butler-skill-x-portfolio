@@ -1,0 +1,42 @@
+{
+  "name": "first deployment buys exactly the approved weights",
+  "executions": [
+    {
+      "idempotencyKey": "@key:e1:TKNA:buy",
+      "amountOut": 1000
+    },
+    {
+      "idempotencyKey": "@key:e1:TKNB:buy",
+      "amountOut": 1500
+    },
+    {
+      "idempotencyKey": "@key:e1:TKNC:buy",
+      "amountOut": 125
+    }
+  ],
+  "expect": {
+    "acp": {
+      "count": 3,
+      "sides": [
+        "buy",
+        "buy",
+        "buy"
+      ],
+      "amounts": [
+        "2000",
+        "1500",
+        "500"
+      ]
+    },
+    "notes_contain": [
+      "rebalance #1",
+      "rebalance #1 settled"
+    ],
+    "state": {
+      "core.deployed": true,
+      "core.pending": null,
+      "core.tx.TKNA": 40,
+      "core.cash": 1000.0
+    }
+  }
+}

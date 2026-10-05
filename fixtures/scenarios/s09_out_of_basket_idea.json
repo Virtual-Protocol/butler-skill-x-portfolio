@@ -1,0 +1,42 @@
+{
+  "name": "an outside idea is reported for the owner to decide, never bought",
+  "core": {
+    "preset": "deployed"
+  },
+  "pocket": {
+    "cash": 1000.0
+  },
+  "state": {
+    "wv": {
+      "version": 7,
+      "at": "@now-1d",
+      "tok": {},
+      "acc": {},
+      "sent": {
+        "score": 0,
+        "why": "mixed"
+      },
+      "tw": {},
+      "oob": [
+        {
+          "symbol": "ZZZ",
+          "who": "alice",
+          "post": "555",
+          "why": "launching soon"
+        }
+      ],
+      "log": []
+    }
+  },
+  "expect": {
+    "acp": {
+      "count": 0
+    },
+    "notes_contain": [
+      "Outside the basket: ZZZ",
+      "approval in chat"
+    ],
+    "pushes": 0,
+    "fails": 0
+  }
+}

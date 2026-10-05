@@ -1,0 +1,17 @@
+name: validate
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      # Checks out this repo, fetches the hub's validator and offline replay harness and runs both.
+      - uses: Virtual-Protocol/butler-skills/.github/actions/validate@main
+        with:
+          maintainer: "true"
+          params: '{"HANDLES":["alice","bob","carol"],"CAPITAL_USD":5000,"BASKET":[{"s":"TKNA","c":8453,"a":"0x1111111111111111111111111111111111111111","w":40},{"s":"TKNB","c":8453,"a":"0x2222222222222222222222222222222222222222","w":30},{"s":"TKNC","c":1,"a":"0x3333333333333333333333333333333333333333","w":10}]}'
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Scenario replays through the hub harness
+        run: python3 tests/run_scenarios.py --hub "$BUTLER_SKILLS_HUB"

@@ -1,0 +1,57 @@
+{
+  "name": "a change that persisted two reviews rebalances: sells first, buys within the cash",
+  "core": {
+    "preset": "deployed",
+    "set": {
+      "cand": {
+        "TKNA": {
+          "pct": 10,
+          "n": 2
+        },
+        "TKNB": {
+          "pct": 50,
+          "n": 2
+        }
+      }
+    }
+  },
+  "pocket": {
+    "cash": 1000.0
+  },
+  "wallet": {
+    "usdc": 1000.0
+  },
+  "executions": [
+    {
+      "idempotencyKey": "@key:e2:TKNA:sell",
+      "usdcReceived": 1500
+    },
+    {
+      "idempotencyKey": "@key:e2:TKNB:buy",
+      "amountOut": 998
+    }
+  ],
+  "expect": {
+    "acp": {
+      "count": 2,
+      "sides": [
+        "sell",
+        "buy"
+      ],
+      "amounts": [
+        "750",
+        "998"
+      ],
+      "max_buy_usd": 1000
+    },
+    "notes_contain": [
+      "rebalance #2",
+      "rebalance #2 settled"
+    ],
+    "state": {
+      "core.tx.TKNA": 10,
+      "core.tx.TKNB": 50,
+      "core.pending": null
+    }
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "name": "an outside token in the same category supports the basket token; it is cited, surfaced and never bought",
+  "core": {
+    "preset": "deployed",
+    "set": {
+      "cand": {
+        "TKNA": {
+          "pct": 50,
+          "n": 2
+        }
+      }
+    }
+  },
+  "pocket": {
+    "cash": 1000.0
+  },
+  "wallet": {
+    "usdc": 1000.0
+  },
+  "state": {
+    "wv": {
+      "version": 4,
+      "at": "@now-1h",
+      "acc": {},
+      "sent": {
+        "score": 1,
+        "why": "constructive",
+        "macro": ""
+      },
+      "oob": [
+        {
+          "symbol": "ZZZ",
+          "who": "bob",
+          "post": "777",
+          "why": "same category (AI agents) as TKNA; strong view"
+        }
+      ],
+      "log": [],
+      "px": {
+        "TKNA": 2.0,
+        "TKNB": 1.0,
+        "TKNC": 4.0
+      },
+      "tw": {
+        "TKNA": 50,
+        "TKNB": 30,
+        "TKNC": 10
+      },
+      "cat": {
+        "TKNA": "AI agents",
+        "TKNB": "DeFi",
+        "TKNC": "L1"
+      },
+      "tok": {
+        "TKNA": {
+          "thesis": "builders keep shipping on agents",
+          "stance": 2,
+          "confidence": 0.7,
+          "for": [
+            {
+              "h": "alice",
+              "p": "101",
+              "at": "@now-3h"
+            }
+          ],
+          "against": [],
+          "invalidation": "loses trend",
+          "claims": [],
+          "ev": [
+            {
+              "via": "category",
+              "rel": "ZZZ",
+              "h": "bob",
+              "p": "777",
+              "at": "@now-3h",
+              "s": 2,
+              "v": 4
+            }
+          ],
+          "lvl": null
+        }
+      }
+    }
+  },
+  "executions": [
+    {
+      "idempotencyKey": "@key:e2:TKNA:buy",
+      "amountOut": 495
+    }
+  ],
+  "expect": {
+    "acp": {
+      "count": 1,
+      "sides": [
+        "buy"
+      ],
+      "max_buy_usd": 1000
+    },
+    "notes_contain": [
+      "Outside the basket: ZZZ",
+      "same category (AI agents) as TKNA",
+      "rebalance #2 settled"
+    ],
+    "pushes": 0,
+    "fails": 0,
+    "state": {
+      "core.tx.TKNA": 50,
+      "wv.cat.TKNA": "AI agents",
+      "wv.tok.TKNA.thesis": "builders keep shipping on agents",
+      "wv.tok.TKNA.ev.0.rel": "ZZZ",
+      "wv.tok.TKNA.ev.0.p": "777",
+      "wv.tok.TKNA.ev.0.via": "category"
+    }
+  }
+}

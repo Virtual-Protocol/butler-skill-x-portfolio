@@ -1,0 +1,72 @@
+{
+  "name": "X is down: no failed run, an alert after several reviews, no trade",
+  "core": {
+    "preset": "deployed"
+  },
+  "pocket": {
+    "cash": 1000.0
+  },
+  "x": {
+    "errors": {
+      "alice": "[bevo-x] search failed (500): upstream error",
+      "bob": "[bevo-x] search failed (500): upstream error",
+      "carol": "[bevo-x] search failed (500): upstream error"
+    }
+  },
+  "state": {
+    "x": {
+      "alice": {
+        "since_id": "100",
+        "scope": "archive",
+        "bf_done": true,
+        "cursor": null,
+        "window_from": "@now-30d",
+        "n_read": 50,
+        "last_ok": "@now-6h",
+        "err": "x down",
+        "err_ticks": 5,
+        "off_until": null,
+        "gaps": []
+      },
+      "bob": {
+        "since_id": "100",
+        "scope": "archive",
+        "bf_done": true,
+        "cursor": null,
+        "window_from": "@now-30d",
+        "n_read": 50,
+        "last_ok": "@now-6h",
+        "err": "x down",
+        "err_ticks": 5,
+        "off_until": null,
+        "gaps": []
+      },
+      "carol": {
+        "since_id": "100",
+        "scope": "archive",
+        "bf_done": true,
+        "cursor": null,
+        "window_from": "@now-30d",
+        "n_read": 50,
+        "last_ok": "@now-6h",
+        "err": "x down",
+        "err_ticks": 5,
+        "off_until": null,
+        "gaps": []
+      }
+    }
+  },
+  "expect": {
+    "acp": {
+      "count": 0
+    },
+    "fails": 0,
+    "push_contains": [
+      "unreadable on X"
+    ],
+    "pushes": 3,
+    "state": {
+      "x.alice.err_ticks": 6
+    }
+  }
+}

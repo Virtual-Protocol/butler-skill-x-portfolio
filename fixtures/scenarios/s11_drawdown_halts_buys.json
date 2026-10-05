@@ -1,0 +1,40 @@
+{
+  "name": "a 30% drawdown stops buys; a persisted exit still sells",
+  "core": {
+    "preset": "deployed",
+    "set": {
+      "contrib": 10000.0,
+      "dd_at": "@now-20m",
+      "cand": {
+        "TKNA": {
+          "pct": 10,
+          "n": 2
+        },
+        "TKNB": {
+          "pct": 50,
+          "n": 2
+        }
+      }
+    }
+  },
+  "pocket": {
+    "cash": 1000.0
+  },
+  "executions": [
+    {
+      "idempotencyKey": "@key:e2:TKNA:sell",
+      "usdcReceived": 1500
+    }
+  ],
+  "expect": {
+    "acp": {
+      "count": 1,
+      "sides": [
+        "sell"
+      ]
+    },
+    "push_contains": [
+      "drawdown"
+    ]
+  }
+}

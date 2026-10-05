@@ -1,0 +1,60 @@
+{
+  "name": "sentiment turns down: weights fall together and the cash share rises",
+  "core": {
+    "preset": "deployed",
+    "set": {
+      "cand": {
+        "TKNA": {
+          "pct": 20,
+          "n": 2
+        },
+        "TKNB": {
+          "pct": 15,
+          "n": 2
+        },
+        "TKNC": {
+          "pct": 5,
+          "n": 2
+        }
+      }
+    }
+  },
+  "pocket": {
+    "cash": 1000.0
+  },
+  "executions": [
+    {
+      "idempotencyKey": "@key:e2:TKNA:sell",
+      "usdcReceived": 1000
+    },
+    {
+      "idempotencyKey": "@key:e2:TKNB:sell",
+      "usdcReceived": 750
+    },
+    {
+      "idempotencyKey": "@key:e2:TKNC:sell",
+      "usdcReceived": 250
+    }
+  ],
+  "expect": {
+    "acp": {
+      "count": 3,
+      "sides": [
+        "sell",
+        "sell",
+        "sell"
+      ],
+      "amounts": [
+        "500",
+        "750",
+        "62.5"
+      ]
+    },
+    "state": {
+      "core.tx.TKNA": 20,
+      "core.tx.TKNB": 15,
+      "core.tx.TKNC": 5,
+      "core.cash": 3000.0
+    }
+  }
+}

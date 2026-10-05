@@ -1,0 +1,97 @@
+{
+  "name": "a market-verified invalidation sells down to the model's target at once, ignoring the spacing, and never buys",
+  "core": {
+    "preset": "deployed",
+    "set": {
+      "last_rebalance_at": "@now-1h"
+    }
+  },
+  "pocket": {
+    "cash": 1000.0
+  },
+  "wallet": {
+    "usdc": 1000.0
+  },
+  "state": {
+    "wv": {
+      "version": 4,
+      "at": "@now-1h",
+      "acc": {},
+      "sent": {
+        "score": 1,
+        "why": "constructive",
+        "macro": ""
+      },
+      "oob": [],
+      "log": [],
+      "px": {
+        "TKNA": 2.0,
+        "TKNB": 1.0,
+        "TKNC": 4.0
+      },
+      "tw": {
+        "TKNA": 20,
+        "TKNB": 50,
+        "TKNC": 10
+      },
+      "cat": {
+        "TKNA": "AI agents",
+        "TKNB": "DeFi",
+        "TKNC": "L1"
+      },
+      "tok": {
+        "TKNA": {
+          "thesis": "builders keep shipping on agents",
+          "stance": 2,
+          "confidence": 0.7,
+          "for": [
+            {
+              "h": "alice",
+              "p": "101",
+              "at": "@now-3h"
+            }
+          ],
+          "against": [],
+          "invalidation": "loses trend",
+          "claims": [],
+          "ev": [],
+          "lvl": {
+            "m": "price_below",
+            "x": 2.5,
+            "v": 3,
+            "at": "@now-48h"
+          }
+        }
+      }
+    }
+  },
+  "executions": [
+    {
+      "idempotencyKey": "@key:e2:TKNA:sell",
+      "usdcReceived": 1000
+    }
+  ],
+  "expect": {
+    "acp": {
+      "count": 1,
+      "sides": [
+        "sell"
+      ],
+      "amounts": [
+        "500"
+      ]
+    },
+    "notes_contain": [
+      "invalidation",
+      "price below 2.5",
+      "rebalance #2 settled"
+    ],
+    "pushes": 0,
+    "fails": 0,
+    "state": {
+      "core.tx.TKNA": 20,
+      "core.tx.TKNB": 30,
+      "core.pending": null
+    }
+  }
+}

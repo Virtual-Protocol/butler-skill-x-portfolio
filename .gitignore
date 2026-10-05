@@ -1,0 +1,7 @@
+# Hub tooling downloaded for local validation; never part of the template.
+validate.py
+replay.py
+stub_bevo.py
+fixtures/trade-activity-*
+__pycache__/
+*.pyc

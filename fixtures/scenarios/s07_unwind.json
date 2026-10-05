@@ -1,0 +1,59 @@
+{
+  "name": "unwind: sells the book, leaves dust, finishes with a summary",
+  "params": {
+    "MODE": "unwind"
+  },
+  "core": {
+    "preset": "deployed",
+    "set": {
+      "pos": {
+        "TKNA": {
+          "qty": 1000.0,
+          "cost": 1800.0,
+          "px": 2.0
+        },
+        "TKNB": {
+          "qty": 1500.0,
+          "cost": 1400.0,
+          "px": 1.0
+        },
+        "TKNC": {
+          "qty": 0.4,
+          "cost": 1.0,
+          "px": 4.0
+        }
+      }
+    }
+  },
+  "pocket": {
+    "cash": 1000.0
+  },
+  "executions": [
+    {
+      "idempotencyKey": "@key:e2:TKNA:sell",
+      "usdcReceived": 2000
+    },
+    {
+      "idempotencyKey": "@key:e2:TKNB:sell",
+      "usdcReceived": 1500
+    }
+  ],
+  "expect": {
+    "acp": {
+      "count": 2,
+      "sides": [
+        "sell",
+        "sell"
+      ],
+      "amounts": [
+        "1000",
+        "1500"
+      ]
+    },
+    "dones": 1,
+    "done_contains": [
+      "sold everything",
+      "Left unsold: TKNC"
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "the wallet is short of USDC: buys shrink to what it holds",
+  "wallet": {
+    "usdc": 100.0
+  },
+  "executions": [
+    {
+      "idempotencyKey": "@key:e1:TKNA:buy",
+      "amountOut": 24
+    },
+    {
+      "idempotencyKey": "@key:e1:TKNB:buy",
+      "amountOut": 37
+    }
+  ],
+  "expect": {
+    "acp": {
+      "count": 2,
+      "sides": [
+        "buy",
+        "buy"
+      ],
+      "max_buy_usd": 99
+    }
+  }
+}

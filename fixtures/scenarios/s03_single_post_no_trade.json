@@ -1,0 +1,29 @@
+{
+  "name": "a single new post is not enough to trade",
+  "core": {
+    "preset": "deployed",
+    "set": {
+      "cand": {
+        "TKNA": {
+          "pct": 10,
+          "n": 1
+        }
+      }
+    }
+  },
+  "pocket": {
+    "cash": 1000.0
+  },
+  "expect": {
+    "acp": {
+      "count": 0
+    },
+    "notes_absent": [
+      "rebalance"
+    ],
+    "fails": 0,
+    "state": {
+      "core.cand.TKNA.n": 1
+    }
+  }
+}

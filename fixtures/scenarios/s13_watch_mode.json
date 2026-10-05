@@ -1,0 +1,26 @@
+{
+  "name": "watch mode reads and reports but never trades",
+  "params": {
+    "MODE": "watch"
+  },
+  "core": {
+    "preset": "deployed",
+    "set": {
+      "cand": {
+        "TKNA": {
+          "pct": 10,
+          "n": 2
+        }
+      }
+    }
+  },
+  "pocket": {
+    "cash": 1000.0
+  },
+  "expect": {
+    "acp": {
+      "count": 0
+    },
+    "fails": 0
+  }
+}

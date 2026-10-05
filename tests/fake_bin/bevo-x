@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+"""A fake `bevo-x search`. BEVO_FAKE_X names a JSON file:
+{"handles": {"alice": [page, page...]}, "errors": {"alice": "bevo-x: ..."}}
+A page is {"posts": [...], "nextCursor": "p1"}; --cursor pN picks page N. --since-id keeps newer posts."""
+import json
+import os
+import sys
+
+args = sys.argv[1:]
+flag = lambda name: args[args.index(name) + 1] if name in args else None
+spec = json.load(open(os.environ["BEVO_FAKE_X"])) if os.environ.get("BEVO_FAKE_X") else {}
+handle = flag("--from")
+if handle in spec.get("errors", {}):
+    sys.stderr.write(spec["errors"][handle] + "\n")
+    sys.exit(1)
+pages = spec.get("handles", {}).get(handle, [{"posts": []}])
+cursor = flag("--cursor")
+page = dict(pages[int(cursor[1:])] if cursor and int(cursor[1:]) < len(pages) else pages[0])
+since = flag("--since-id")
+if since:
+    page["posts"] = [p for p in page.get("posts", []) if int(p["id"]) > int(since)]
+print(json.dumps(page))
