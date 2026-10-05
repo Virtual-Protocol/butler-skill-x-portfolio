@@ -202,7 +202,7 @@ def settings():
     if not SYMBOL_RE.match(sym) or sym in tok:
       bad.append("BASKET symbol %r is missing or repeated" % sym[:14])
     elif not (whole_ints and chain > 0 and 0 <= weight <= 100 and addr and bool(EVM.match(addr)) == (chain != SOLANA)):
-      bad.append("%s needs a chain id, a matching address and a whole weight" % sym)
+      bad.append("%s needs a chain id, a contract address (a native coin is held wrapped) and a whole weight" % sym)
     else:
       tok[sym] = {"chain": chain, "addr": addr, "w": weight}
       total += weight

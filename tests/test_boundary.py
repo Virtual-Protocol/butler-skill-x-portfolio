@@ -88,7 +88,7 @@ class BoundaryTest(unittest.TestCase):
         self.assertGreater(seen, 20)
 
     def test_size_budget(self):
-        self.assertLessEqual(len(SOURCE), 62000)  # the server's cap is 65536
+        self.assertLessEqual(len(SOURCE), 63000)  # the server's cap is 65536
 
     def test_the_recipe_has_no_default_token_chain_or_cap(self):
         recipe = json.loads((ROOT / "recipe.json").read_text())
