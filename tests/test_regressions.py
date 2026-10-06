@@ -4,7 +4,7 @@ import json
 import unittest
 from datetime import timedelta
 
-from fake_bevo import SAMPLE_BASKET, install
+from fake_bevo import ADDR, SAMPLE_BASKET, install
 from test_execution import World, deployed_core, setup
 
 
@@ -74,12 +74,12 @@ class BasketEditTest(unittest.TestCase):
         full = install()[0].settings()[0]
         world.cfg = full
         core = deployed_core(duty, full, fake)
-        core["pos"]["TKNA"].update(addr=SAMPLE_BASKET[0]["a"], chain=8453)
+        core["pos"]["TKNA"].update(addr=ADDR["TKNA"], chain=8453)
         fake.state["core"] = core
         with self.assertRaises(SystemExit):
             world.go()
         sold = [a[3] for a in world.argvs]
-        self.assertIn(SAMPLE_BASKET[0]["a"], sold)
+        self.assertIn(ADDR["TKNA"], sold)
         self.assertEqual(fake.state["core"]["pos"], {})
 
     def test_a_refused_unwind_sell_is_not_resent_and_the_duty_still_finishes(self):

@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import timedelta
 from pathlib import Path
 from unittest import mock
 
@@ -112,6 +113,56 @@ class IngestTest(unittest.TestCase):
         text = self.duty.render_posts(chunk)
         self.assertIn("thread of 1", text)
         self.assertIn("reply", text)
+
+
+class RotationTest(unittest.TestCase):
+    """Any number of accounts: 5 are read per review, oldest read first, so every one is read in turn."""
+
+    def setUp(self):
+        self.handles = ["h%02d" % i for i in range(12)]
+        self.duty, self.fake = install({"HANDLES": self.handles, "CAPITAL_USD": 1000, "MODE": "watch",
+                                        "BASKET": [{"s": "TKNA", "c": 8453, "w": 50}]})
+        self.cfg, problems = self.duty.settings()
+        self.assertEqual(problems, [])
+        self.calls = []
+
+    def tick(self, minutes, posts=None):
+        def run(argv, **kw):
+            self.calls.append(argv[argv.index("--from") + 1])
+            return mock.Mock(returncode=0, stdout=json.dumps({"posts": posts or []}), stderr="")
+
+        with mock.patch.object(self.duty.subprocess, "run", run):
+            before = len(self.calls)
+            self.duty.ingest(self.cfg, self.duty.now() + timedelta(minutes=minutes))
+        return self.calls[before:]
+
+    def test_five_per_review_oldest_first_and_all_twelve_within_three_reviews(self):
+        first, second, third = self.tick(0), self.tick(60), self.tick(120)
+        self.assertEqual(first, self.handles[:5])
+        self.assertEqual(second, self.handles[5:10])
+        self.assertEqual(sorted(third), self.handles[:3] + self.handles[10:])  # never read first, then the oldest read
+        self.assertEqual(set(first + second + third), set(self.handles))
+        self.assertEqual(self.fake.state["rot"], [5, 12])
+
+    def test_the_backfill_rotates_the_same_way_and_holds_the_review_only_until_every_account_is_read(self):
+        page = {"posts": [raw(1), raw(2)], "nextCursor": "p1"}
+
+        def run(argv, **kw):
+            self.calls.append(argv[argv.index("--from") + 1])
+            return mock.Mock(returncode=0, stdout=json.dumps(page), stderr="")
+
+        with mock.patch.object(self.duty.subprocess, "run", run):
+            self.assertTrue(self.duty.ingest(self.cfg, self.duty.now()))
+        xs = self.fake.state["x"]
+        self.assertEqual(sorted(h for h, st in xs.items() if st["read_at"]), self.handles[:5])
+        self.assertTrue(all(not st["read_at"] for h, st in xs.items() if h not in self.handles[:5]))
+
+    def test_an_account_paused_by_x_does_not_take_a_slot(self):
+        self.tick(0)
+        xs = self.fake.state["x"]
+        xs["h05"]["off_until"] = self.duty.iso(self.duty.now() + timedelta(days=1))
+        self.fake.state["x"] = xs
+        self.assertEqual(self.tick(60), self.handles[6:11])
 
 
 if __name__ == "__main__":

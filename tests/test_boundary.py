@@ -88,7 +88,7 @@ class BoundaryTest(unittest.TestCase):
         self.assertGreater(seen, 20)
 
     def test_size_budget(self):
-        self.assertLessEqual(len(SOURCE), 63000)  # the server's cap is 65536
+        self.assertLessEqual(len(SOURCE), 65000)  # the server's cap is 65536; v2 (any handle count, no addresses) is ~65K; a fork has under 600 chars of room
 
     def test_the_recipe_has_no_default_token_chain_or_cap(self):
         recipe = json.loads((ROOT / "recipe.json").read_text())
@@ -111,7 +111,7 @@ class ContainerFactsTest(unittest.TestCase):
         for name in ("taintedMoney", "badKeys", "selfLoops", "retiredCalls", "badBevoImports", "literalMoneyAmounts"):
             self.assertEqual(facts[name], [], name)
         self.assertTrue(facts["shellMoneyCalls"] and all(c["keyed"] for c in facts["shellMoneyCalls"]))
-        self.assertTrue({r["path"] for r in facts["readPaths"]} <= {"/duties", "/user-assets", "/token-stats", "/trade-executions"})
+        self.assertTrue({r["path"] for r in facts["readPaths"]} <= {"/duties", "/user-assets", "/token-stats", "/token-search", "/trade-executions"})
 
 
 if __name__ == "__main__":

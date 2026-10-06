@@ -6,7 +6,7 @@ import unittest
 from datetime import timedelta
 
 import fake_bevo
-from fake_bevo import SAMPLE_BASKET, SAMPLE_PARAMS, install
+from fake_bevo import ADDR, SAMPLE_BASKET, SAMPLE_PARAMS, install
 
 
 def cfg_of(duty):
@@ -36,25 +36,30 @@ class SettingsTest(unittest.TestCase):
         cases = {
             "weights over 100": [dict(b, w=60) for b in bad],
             "empty": [],
-            "9 tokens": [dict(bad[0], s="T%d" % i, a="0x" + "%02x" % i * 20, w=1) for i in range(9)],
-            "address and chain disagree": [dict(bad[0], c=1151111081099710)],
+            "9 tokens": [dict(bad[0], s="T%d" % i, w=1) for i in range(9)],
+            "no chain": [{"s": "X", "w": 5}],
+            "chain as text": [dict(bad[0], c="8453")],
             "duplicate symbol": [bad[0], dict(bad[1], s="TKNA")],
             "fractional weight": [dict(bad[0], w=10.5)],
-            "no address": [{"s": "X", "c": 8453, "w": 5}],
         }
         for name, basket in cases.items():
             _, problems = self.check(BASKET=basket)
             self.assertTrue(problems, name)
 
-    def test_solana_mint_needs_the_solana_chain(self):
-        mint = "So11111111111111111111111111111111111111112"
-        _, ok = self.check(BASKET=[{"s": "SOLX", "c": 1151111081099710, "a": mint, "w": 10}])
-        _, bad = self.check(BASKET=[{"s": "SOLX", "c": 8453, "a": mint, "w": 10}])
-        self.assertEqual(ok, [])
-        self.assertTrue(bad)
+    def test_a_basket_is_symbol_chain_weight_and_native_coins_are_tickers(self):
+        basket = [{"s": "ETH", "c": 8453, "w": 30}, {"s": "SOL", "c": 1151111081099710, "w": 20}, {"s": "$bnb", "c": 56, "w": 10}]
+        cfg, problems = self.check(BASKET=basket)
+        self.assertEqual(problems, [])
+        self.assertEqual(cfg["tok"]["ETH"], {"chain": 8453, "w": 30})
+        self.assertEqual(set(cfg["tok"]), {"ETH", "SOL", "BNB"})
+
+    def test_any_number_of_accounts_validates_and_duplicates_collapse(self):
+        cfg, problems = self.check(HANDLES=["h%d" % i for i in range(12)] + ["@H3"])
+        self.assertEqual(problems, [])
+        self.assertEqual(len(cfg["handles"]), 12)
 
     def test_other_settings(self):
-        for change in ({"HANDLES": []}, {"HANDLES": list("abcdef")}, {"CAPITAL_USD": 50},
+        for change in ({"HANDLES": []}, {"CAPITAL_USD": 50},
                        {"REBALANCE_HOURS": 500}, {"MODE": "yolo"}):
             self.assertTrue(self.check(**change)[1], change)
 
@@ -64,9 +69,9 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(duty.settings()[0]["mode"], "watch")
 
     def test_params_fit_the_filing_limit(self):
-        handles = ["alice_x", "bob_xx", "carol_x"]
-        basket = [{"s": "TKN%d" % i, "c": 8453, "a": "0x" + "%02x" % (i + 16) * 20, "w": 12} for i in range(8)]
-        basket[-1] = {"s": "SOLX", "c": 1151111081099710, "a": "So11111111111111111111111111111111111111112", "w": 4}
+        handles = ["alice_x%d" % i for i in range(8)]
+        basket = [{"s": "TKN%d" % i, "c": 8453, "w": 12} for i in range(8)]
+        basket[-1] = {"s": "SOLX", "c": 1151111081099710, "w": 4}
         params = {"HANDLES": handles, "CAPITAL_USD": 10000, "BASKET": basket, "REBALANCE_HOURS": 24, "MODE": "run"}
         size = len(json.dumps(params, separators=(",", ":")))
         self.assertLessEqual(size, 1024, size)
@@ -178,8 +183,8 @@ class PlanTest(unittest.TestCase):
         self.core = new_core(self.duty, self.cfg)
         self.market = {s: {"p": 1.0} for s in self.cfg["tok"]}
         self.core["cash"] = 2000.0
-        self.core["pos"] = {"TKNA": {"qty": 2000.0, "cost": 2000.0, "px": 1.0},
-                            "TKNB": {"qty": 1000.0, "cost": 1000.0, "px": 1.0}}
+        self.core["pos"] = {"TKNA": {"qty": 2000.0, "cost": 2000.0, "px": 1.0, "addr": ADDR["TKNA"], "chain": 8453},
+                            "TKNB": {"qty": 1000.0, "cost": 1000.0, "px": 1.0, "addr": ADDR["TKNB"], "chain": 8453}}
 
     def plan(self, eff, **kw):
         nav, vals = self.duty.valuation(self.core, self.cfg, self.market)
@@ -221,11 +226,12 @@ class PlanTest(unittest.TestCase):
         legs, _ = self.plan({"TKNA": 0, "TKNB": 0, "TKNC": 10})
         self.assertEqual(legs, [])  # a $10 Ethereum leg is below the floor
 
-    def test_every_leg_uses_a_basket_address(self):
+    def test_every_leg_names_a_basket_symbol_and_chain_and_sells_the_learned_address(self):
         legs, _ = self.plan({"TKNA": 10, "TKNB": 20, "TKNC": 30})
         spec = self.cfg["tok"]
         for leg in legs:
-            self.assertEqual((leg["addr"], leg["chain"]), (spec[leg["sym"]]["addr"], spec[leg["sym"]]["chain"]))
+            self.assertEqual(leg["chain"], spec[leg["sym"]]["chain"])
+            self.assertEqual(leg["ref"], self.core["pos"][leg["sym"]]["addr"] if leg["side"] == "sell" else None)
 
 
 class SizingTest(unittest.TestCase):
@@ -271,18 +277,17 @@ class SizingTest(unittest.TestCase):
         self.assertEqual(self.sent, [])
 
     def test_sell_quantity_is_floored_and_capped(self):
-        self.core["pos"] = {"TKNA": {"qty": 10.123456789, "cost": 1.0, "px": 1.0}}
-        leg = self.duty.make_leg("TKNA", self.cfg["tok"]["TKNA"], "sell", 5, 99.0, 1.0)
-        spec = self.cfg["tok"]["TKNA"]
-        wallet = {"usdc": 1.0, "qty": {(spec["addr"], spec["chain"]): 3.987654321}}
+        self.core["pos"] = {"TKNA": {"qty": 10.123456789, "cost": 1.0, "px": 1.0, "addr": ADDR["TKNA"], "chain": 8453}}
+        leg = self.duty.make_leg("TKNA", self.cfg["tok"]["TKNA"], "sell", 5, 99.0, 1.0, self.core["pos"]["TKNA"])
+        wallet = {"usdc": 1.0, "qty": {(ADDR["TKNA"], 8453): {"q": 3.987654321}}}
         self.assertEqual(self.duty.sell_qty(self.core, self.cfg, leg, wallet, None), 3.98765432)
         self.assertEqual(self.duty.sell_qty(self.core, self.cfg, leg, {"usdc": 1.0, "qty": {}}, None), 10.12345678)
 
     def test_apply_fill_tracks_cost_basis_and_realized_pnl(self):
         buy = self.duty.make_leg("TKNA", self.cfg["tok"]["TKNA"], "buy", 100, None, 1.0)
         self.core["cash"] = 1000.0
-        self.duty.apply_fill(self.core, buy, {"qty": 100.0, "usd": 100.0, "px": 1.0})
-        sell = self.duty.make_leg("TKNA", self.cfg["tok"]["TKNA"], "sell", 60, 40.0, 1.5)
+        self.duty.apply_fill(self.core, buy, {"qty": 100.0, "usd": 100.0, "px": 1.0, "addr": ADDR["TKNA"]})
+        sell = self.duty.make_leg("TKNA", self.cfg["tok"]["TKNA"], "sell", 60, 40.0, 1.5, self.core["pos"]["TKNA"])
         self.duty.apply_fill(self.core, sell, {"qty": 40.0, "usd": 60.0, "px": 1.5})
         pos = self.core["pos"]["TKNA"]
         self.assertAlmostEqual(pos["qty"], 60.0)

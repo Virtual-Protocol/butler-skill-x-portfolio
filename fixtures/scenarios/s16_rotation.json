@@ -1,0 +1,234 @@
+{
+  "name": "twelve accounts: 5 are read per review, oldest read first, and every account is read within three reviews",
+  "params": {
+    "HANDLES": [
+      "h00",
+      "h01",
+      "h02",
+      "h03",
+      "h04",
+      "h05",
+      "h06",
+      "h07",
+      "h08",
+      "h09",
+      "h10",
+      "h11"
+    ]
+  },
+  "ticks": 2,
+  "core": {
+    "preset": "deployed"
+  },
+  "pocket": {
+    "cash": 1000.0
+  },
+  "x": {
+    "handles": {
+      "h00": [
+        {
+          "posts": [
+            {
+              "id": "1000",
+              "text": "TKNA looks strong this week, adding more",
+              "createdAt": "2026-10-05T12:00:00Z",
+              "conversationId": "1000",
+              "author": {
+                "username": "h00"
+              }
+            }
+          ]
+        }
+      ],
+      "h01": [
+        {
+          "posts": [
+            {
+              "id": "1001",
+              "text": "TKNA looks strong this week, adding more",
+              "createdAt": "2026-10-05T12:00:00Z",
+              "conversationId": "1001",
+              "author": {
+                "username": "h01"
+              }
+            }
+          ]
+        }
+      ],
+      "h02": [
+        {
+          "posts": [
+            {
+              "id": "1002",
+              "text": "TKNA looks strong this week, adding more",
+              "createdAt": "2026-10-05T12:00:00Z",
+              "conversationId": "1002",
+              "author": {
+                "username": "h02"
+              }
+            }
+          ]
+        }
+      ],
+      "h03": [
+        {
+          "posts": [
+            {
+              "id": "1003",
+              "text": "TKNA looks strong this week, adding more",
+              "createdAt": "2026-10-05T12:00:00Z",
+              "conversationId": "1003",
+              "author": {
+                "username": "h03"
+              }
+            }
+          ]
+        }
+      ],
+      "h04": [
+        {
+          "posts": [
+            {
+              "id": "1004",
+              "text": "TKNA looks strong this week, adding more",
+              "createdAt": "2026-10-05T12:00:00Z",
+              "conversationId": "1004",
+              "author": {
+                "username": "h04"
+              }
+            }
+          ]
+        }
+      ],
+      "h05": [
+        {
+          "posts": [
+            {
+              "id": "1005",
+              "text": "TKNA looks strong this week, adding more",
+              "createdAt": "2026-10-05T12:00:00Z",
+              "conversationId": "1005",
+              "author": {
+                "username": "h05"
+              }
+            }
+          ]
+        }
+      ],
+      "h06": [
+        {
+          "posts": [
+            {
+              "id": "1006",
+              "text": "TKNA looks strong this week, adding more",
+              "createdAt": "2026-10-05T12:00:00Z",
+              "conversationId": "1006",
+              "author": {
+                "username": "h06"
+              }
+            }
+          ]
+        }
+      ],
+      "h07": [
+        {
+          "posts": [
+            {
+              "id": "1007",
+              "text": "TKNA looks strong this week, adding more",
+              "createdAt": "2026-10-05T12:00:00Z",
+              "conversationId": "1007",
+              "author": {
+                "username": "h07"
+              }
+            }
+          ]
+        }
+      ],
+      "h08": [
+        {
+          "posts": [
+            {
+              "id": "1008",
+              "text": "TKNA looks strong this week, adding more",
+              "createdAt": "2026-10-05T12:00:00Z",
+              "conversationId": "1008",
+              "author": {
+                "username": "h08"
+              }
+            }
+          ]
+        }
+      ],
+      "h09": [
+        {
+          "posts": [
+            {
+              "id": "1009",
+              "text": "TKNA looks strong this week, adding more",
+              "createdAt": "2026-10-05T12:00:00Z",
+              "conversationId": "1009",
+              "author": {
+                "username": "h09"
+              }
+            }
+          ]
+        }
+      ],
+      "h10": [
+        {
+          "posts": [
+            {
+              "id": "1010",
+              "text": "TKNA looks strong this week, adding more",
+              "createdAt": "2026-10-05T12:00:00Z",
+              "conversationId": "1010",
+              "author": {
+                "username": "h10"
+              }
+            }
+          ]
+        }
+      ],
+      "h11": [
+        {
+          "posts": [
+            {
+              "id": "1011",
+              "text": "TKNA looks strong this week, adding more",
+              "createdAt": "2026-10-05T12:00:00Z",
+              "conversationId": "1011",
+              "author": {
+                "username": "h11"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "expect": {
+    "acp": {
+      "count": 0
+    },
+    "fails": 0,
+    "state": {
+      "rot": [
+        5,
+        12
+      ],
+      "x.h00.n_read": 1,
+      "x.h01.n_read": 1,
+      "x.h02.n_read": 1,
+      "x.h03.n_read": 1,
+      "x.h04.n_read": 1,
+      "x.h05.n_read": 1,
+      "x.h06.n_read": 1,
+      "x.h07.n_read": 1,
+      "x.h08.n_read": 1,
+      "x.h09.n_read": 1,
+      "x.h10.n_read": 1,
+      "x.h11.n_read": 1
+    }
+  }
+}
