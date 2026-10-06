@@ -44,7 +44,7 @@ class World:
         tx = "0x" + key[-8:].encode().hex()
         self.rows.append({"txHash": tx, "amountOut": amount / PRICE[sym] if buy else None,
                           "usdcReceived": None if buy else amount * PRICE[sym],
-                          **({"tokenOutSymbol": sym, "tokenOutAddress": ADDR[sym], "chainOut": self.cfg["tok"][sym]["chain"]}
+                          **({"tokenOutSymbol": sym, "tokenOutAddress": ADDR[sym], "chainOut": self.cfg["basket"][sym]["chain"]}
                              if buy else {})})
         self.fake.statuses[key] = {"state": "executed", "response": {"txHash": tx}}
         return completed(json.dumps({"status": "accepted", "idempotencyKey": key}))
@@ -93,8 +93,8 @@ class ArgvTest(unittest.TestCase):
         duty, fake = install()
         cfg, _ = duty.settings()
         seen = []
-        buy = duty.make_leg("TKNA", cfg["tok"]["TKNA"], "buy", 10, None, 1.0)
-        sell = duty.make_leg("TKNC", cfg["tok"]["TKNC"], "sell", 10, 3.0, 1.0, {"addr": ADDR["TKNC"], "chain": 1})
+        buy = duty.make_leg("TKNA", cfg["basket"]["TKNA"], "buy", 10, None, 1.0)
+        sell = duty.make_leg("TKNC", cfg["basket"]["TKNC"], "sell", 10, 3.0, 1.0, {"addr": ADDR["TKNC"], "chain": 1})
         buy.update(amt="12.5", key="k1")
         sell.update(amt="3", key="k2")
         with mock.patch.object(duty.subprocess, "run", lambda argv, **kw: seen.append(argv) or completed("{}")):
@@ -109,7 +109,7 @@ class ArgvTest(unittest.TestCase):
     def test_a_timeout_or_missing_cli_is_not_a_refusal(self):
         duty, fake = install()
         cfg, _ = duty.settings()
-        leg = duty.make_leg("TKNA", cfg["tok"]["TKNA"], "buy", 10, None, 1.0)
+        leg = duty.make_leg("TKNA", cfg["basket"]["TKNA"], "buy", 10, None, 1.0)
         leg.update(amt="5", key="k")
         with mock.patch.object(duty.subprocess, "run", side_effect=FileNotFoundError):
             self.assertIsNone(duty.run_acp(leg))
@@ -156,7 +156,7 @@ class FirstDeploymentTest(unittest.TestCase):
             argv = buys[sym]
             self.assertEqual(argv[:4], ["acp", "trade", "--token-in", "usdc"])
             self.assertEqual(argv[argv.index("--amount-in") + 1], amount)
-            self.assertEqual(argv[argv.index("--chain-out") + 1], str(world.cfg["tok"][sym]["chain"]))
+            self.assertEqual(argv[argv.index("--chain-out") + 1], str(world.cfg["basket"][sym]["chain"]))
             self.assertRegex(argv[-1], KEY_RE)
         core = fake.state["core"]
         self.assertTrue(core["deployed"])
@@ -194,7 +194,7 @@ class RecoveryTest(unittest.TestCase):
         core = deployed_core(duty, world.cfg, fake)
         legs = []
         for sym, side, st in states:
-            leg = duty.make_leg(sym, world.cfg["tok"][sym], side, 100.0, 10.0 if side == "sell" else None, PRICE[sym],
+            leg = duty.make_leg(sym, world.cfg["basket"][sym], side, 100.0, 10.0 if side == "sell" else None, PRICE[sym],
                                 core["pos"].get(sym))
             leg.update(key=duty.new_key(core["gen"], 2, sym, side), st=st, amt="10" if st != "planned" else None)
             legs.append(leg)

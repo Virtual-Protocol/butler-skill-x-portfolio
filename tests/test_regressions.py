@@ -22,7 +22,7 @@ class LedgerShapeTest(unittest.TestCase):
         fake.reads["/trade-executions"] = {"trades": [{"txHash": "0xAB"}], "nextCursor": None}
         self.assertEqual(duty.trade_rows(), [{"txHash": "0xAB"}])
         core = deployed_core(duty, world.cfg, fake)
-        leg = duty.make_leg("TKNA", world.cfg["tok"]["TKNA"], "buy", 100.0, None, 2.0)
+        leg = duty.make_leg("TKNA", world.cfg["basket"]["TKNA"], "buy", 100.0, None, 2.0)
         leg.update(key="k1", st="filed", amt="100")
         core["pending"] = {"epoch": 2, "at": duty.iso(duty.now()), "why": "t", "legs": [leg], "targets": {}, "first": False,
                            "stop_buys": False}
@@ -38,7 +38,7 @@ class StuckLegTest(unittest.TestCase):
     def test_an_unknown_leg_ages_out_and_the_epoch_closes(self):
         duty, fake, world = setup()
         core = deployed_core(duty, world.cfg, fake)
-        leg = duty.make_leg("TKNA", world.cfg["tok"]["TKNA"], "buy", 100.0, None, 2.0)
+        leg = duty.make_leg("TKNA", world.cfg["basket"]["TKNA"], "buy", 100.0, None, 2.0)
         leg.update(key="k1", st="unknown", amt="100", sent_at="2020-01-01T00:00:00Z")
         core["pending"] = {"epoch": 2, "at": "2020-01-01T00:00:00Z", "why": "t", "legs": [leg], "targets": {}, "first": False,
                            "stop_buys": False}
@@ -60,7 +60,7 @@ class BasketEditTest(unittest.TestCase):
         core = deployed_core(duty, world.cfg, fake)
         core["tx"] = {"TKNA": 40, "TKNB": 30, "TKNC": 10}
         core["cfg_w"] = {"TKNA": 40, "TKNB": 30, "TKNC": 10}
-        cfg = dict(world.cfg, tok={s: dict(r, w=30 if s == "TKNC" else r["w"]) for s, r in world.cfg["tok"].items()})
+        cfg = dict(world.cfg, basket={s: dict(r, w=30 if s == "TKNC" else r["w"]) for s, r in world.cfg["basket"].items()})
         core["halted"] = "2026-01-01T00:00:00Z"
         duty.mandate_change(core, cfg)
         self.assertEqual(duty.effective_targets(core, cfg)["TKNC"], 30)
