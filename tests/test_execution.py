@@ -176,6 +176,13 @@ class FirstDeploymentTest(unittest.TestCase):
         self.assertLessEqual(spent, 1000.0 - 2.0)
         self.assertGreater(spent, 990.0)
 
+    def test_cash_held_on_hyperliquid_funds_the_buys(self):
+        duty, fake, world = setup(usdc=0.0)
+        fake.reads["/user-assets"]["cashUsd"] = 6000.0  # no USDC row on-chain; the server's cash figure has it
+        world.go()
+        self.assertEqual(len(world.argvs), 3)
+        self.assertFalse(any("Purchases skipped" in n["text"] for n in fake.notes))
+
     def test_nothing_trades_while_the_pocket_is_unfunded(self):
         duty, fake, world = setup(cash=0.0, funded=False)
         world.go()

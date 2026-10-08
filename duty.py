@@ -364,15 +364,17 @@ def my_duty():
 
 def read_wallet():
     try:
-        spot = ((bevo.read("/user-assets", {"fresh": 1}) or {}).get("spot")) or {}
+        body = bevo.read("/user-assets", {"fresh": 1}) or {}
     except bevo.BevoError as error:
         say("wallet unavailable: %s" % error)
         return {"usdc": None, "qty": {}}
+    spot = body.get("spot") or {}
     if spot.get("available") is not True:
         return {"usdc": None, "qty": {}}
     tokens = [t for t in spot.get("tokens") or []
               if isinstance(t, dict) and to_number(t.get("balance")) is not None]
-    cash = to_number(spot.get("cashUsd"))
+    # cashUsd sits beside spot, not in it, and counts free Hyperliquid USDC, which a buy also reaches
+    cash = to_number(body.get("cashUsd"))
     if cash is None:
         cash = sum(to_number(t["balance"]) for t in tokens if str(t.get("symbol")).upper() == "USDC")
     held = holdings_table(
