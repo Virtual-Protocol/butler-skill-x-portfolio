@@ -6,7 +6,7 @@ import unittest
 from datetime import timedelta
 from unittest import mock
 
-from fake_bevo import SAMPLE_BASKET, completed, install
+from fake_bevo import ADDR, SAMPLE_BASKET, completed, install
 
 KEY_RE = re.compile(r"^[A-Za-z0-9:_.\-]{1,128}$")
 PRICE = {"TKNA": 2.0, "TKNB": 1.0, "TKNC": 4.0}
@@ -26,7 +26,9 @@ class World:
         tokens += wallet or []
         fake.reads["/user-assets"] = {"spot": {"available": True, "tokens": tokens}}
         fake.reads["/token-stats"] = {"tokens": [
-            {"address": r["a"], "networkId": r["c"], "priceUsd": PRICE[r["s"]]} for r in SAMPLE_BASKET]}
+            {"address": ADDR[r["s"]], "networkId": r["c"], "priceUsd": PRICE[r["s"]]} for r in SAMPLE_BASKET]}
+        fake.reads["/token-search"] = {"tokens": [
+            {"symbol": r["s"], "address": ADDR[r["s"]], "chainId": r["c"], "verified": True} for r in SAMPLE_BASKET]}
         fake.reads["/trade-executions"] = {"trades": self.rows, "nextCursor": None, "hasMore": False}
 
     def run_acp(self, argv, **kwargs):
@@ -37,11 +39,13 @@ class World:
         if self.reply is not None:
             return completed(json.dumps(self.reply))
         amount = float(argv[argv.index("--amount-in") + 1])
-        sym = next(s for s, r in self.cfg["tok"].items() if r["addr"] in argv)
         buy = argv[3] == "usdc"
+        sym = argv[argv.index("--token-out") + 1] if buy else next(s for s, a in ADDR.items() if a == argv[3])
         tx = "0x" + key[-8:].encode().hex()
         self.rows.append({"txHash": tx, "amountOut": amount / PRICE[sym] if buy else None,
-                          "usdcReceived": None if buy else amount * PRICE[sym]})
+                          "usdcReceived": None if buy else amount * PRICE[sym],
+                          **({"tokenOutSymbol": sym, "tokenOutAddress": ADDR[sym], "chainOut": self.cfg["basket"][sym]["chain"]}
+                             if buy else {})})
         self.fake.statuses[key] = {"state": "executed", "response": {"txHash": tx}}
         return completed(json.dumps({"status": "accepted", "idempotencyKey": key}))
 
@@ -59,8 +63,9 @@ def deployed_core(duty, cfg, fake, **over):
     core = duty.fresh_core(None, cfg, duty.now())
     core.update(deployed=True, funded_at=duty.iso(duty.now()), cash=1000.0, contrib=5000.0, epoch=1,
                 last_rebalance_at="2020-01-01T00:00:00Z",
-                pos={"TKNA": {"qty": 1000.0, "cost": 1800.0, "px": 2.0}, "TKNB": {"qty": 1500.0, "cost": 1400.0, "px": 1.0},
-                     "TKNC": {"qty": 125.0, "cost": 450.0, "px": 4.0}})
+                pos={"TKNA": {"qty": 1000.0, "cost": 1800.0, "px": 2.0, "addr": ADDR["TKNA"], "chain": 8453},
+                     "TKNB": {"qty": 1500.0, "cost": 1400.0, "px": 1.0, "addr": ADDR["TKNB"], "chain": 8453},
+                     "TKNC": {"qty": 125.0, "cost": 450.0, "px": 4.0, "addr": ADDR["TKNC"], "chain": 1}})
     core.update(over)
     fake.state["core"] = core
     return core
@@ -88,15 +93,15 @@ class ArgvTest(unittest.TestCase):
         duty, fake = install()
         cfg, _ = duty.settings()
         seen = []
-        buy = duty.make_leg("TKNA", cfg["tok"]["TKNA"], "buy", 10, None, 1.0)
-        sell = duty.make_leg("TKNC", cfg["tok"]["TKNC"], "sell", 10, 3.0, 1.0)
+        buy = duty.make_leg("TKNA", cfg["basket"]["TKNA"], "buy", 10, None, 1.0)
+        sell = duty.make_leg("TKNC", cfg["basket"]["TKNC"], "sell", 10, 3.0, 1.0, {"addr": ADDR["TKNC"], "chain": 1})
         buy.update(amt="12.5", key="k1")
         sell.update(amt="3", key="k2")
         with mock.patch.object(duty.subprocess, "run", lambda argv, **kw: seen.append(argv) or completed("{}")):
             duty.run_acp(buy)
             duty.run_acp(sell)
-        a, c = cfg["tok"]["TKNA"]["addr"], cfg["tok"]["TKNC"]["addr"]
-        self.assertEqual(seen[0], ["acp", "trade", "--token-in", "usdc", "--amount-in", "12.5", "--token-out", a,
+        c = ADDR["TKNC"]
+        self.assertEqual(seen[0], ["acp", "trade", "--token-in", "usdc", "--amount-in", "12.5", "--token-out", "TKNA",
                                    "--chain-out", "8453", "--idempotency-key", "k1"])
         self.assertEqual(seen[1], ["acp", "trade", "--token-in", c, "--chain-in", "1", "--amount-in", "3",
                                    "--token-out", "usdc", "--idempotency-key", "k2"])
@@ -104,7 +109,7 @@ class ArgvTest(unittest.TestCase):
     def test_a_timeout_or_missing_cli_is_not_a_refusal(self):
         duty, fake = install()
         cfg, _ = duty.settings()
-        leg = duty.make_leg("TKNA", cfg["tok"]["TKNA"], "buy", 10, None, 1.0)
+        leg = duty.make_leg("TKNA", cfg["basket"]["TKNA"], "buy", 10, None, 1.0)
         leg.update(amt="5", key="k")
         with mock.patch.object(duty.subprocess, "run", side_effect=FileNotFoundError):
             self.assertIsNone(duty.run_acp(leg))
@@ -148,10 +153,10 @@ class FirstDeploymentTest(unittest.TestCase):
         self.assertEqual(len(world.argvs), 3)
         want = {"TKNA": "2000", "TKNB": "1500", "TKNC": "500"}  # 40 / 30 / 10 percent of $5,000
         for sym, amount in want.items():
-            argv = buys[world.cfg["tok"][sym]["addr"]]
+            argv = buys[sym]
             self.assertEqual(argv[:4], ["acp", "trade", "--token-in", "usdc"])
             self.assertEqual(argv[argv.index("--amount-in") + 1], amount)
-            self.assertEqual(argv[argv.index("--chain-out") + 1], str(world.cfg["tok"][sym]["chain"]))
+            self.assertEqual(argv[argv.index("--chain-out") + 1], str(world.cfg["basket"][sym]["chain"]))
             self.assertRegex(argv[-1], KEY_RE)
         core = fake.state["core"]
         self.assertTrue(core["deployed"])
@@ -159,6 +164,7 @@ class FirstDeploymentTest(unittest.TestCase):
         self.assertEqual(core["tx"], {"TKNA": 40, "TKNB": 30, "TKNC": 10})
         self.assertAlmostEqual(core["cash"], 1000.0)
         self.assertAlmostEqual(core["pos"]["TKNA"]["qty"], 1000.0)
+        self.assertEqual(core["pos"]["TKNA"]["addr"], ADDR["TKNA"])  # learned from the fill, never filed
         self.assertTrue(any("rebalance #1 settled" in n["text"] for n in fake.notes))
 
     def test_a_full_basket_is_scaled_to_leave_the_buffer(self):
@@ -169,6 +175,13 @@ class FirstDeploymentTest(unittest.TestCase):
         spent = float(world.argvs[0][world.argvs[0].index("--amount-in") + 1])
         self.assertLessEqual(spent, 1000.0 - 2.0)
         self.assertGreater(spent, 990.0)
+
+    def test_cash_held_on_hyperliquid_funds_the_buys(self):
+        duty, fake, world = setup(usdc=0.0)
+        fake.reads["/user-assets"]["cashUsd"] = 6000.0  # no USDC row on-chain; the server's cash figure has it
+        world.go()
+        self.assertEqual(len(world.argvs), 3)
+        self.assertFalse(any("Purchases skipped" in n["text"] for n in fake.notes))
 
     def test_nothing_trades_while_the_pocket_is_unfunded(self):
         duty, fake, world = setup(cash=0.0, funded=False)
@@ -188,7 +201,8 @@ class RecoveryTest(unittest.TestCase):
         core = deployed_core(duty, world.cfg, fake)
         legs = []
         for sym, side, st in states:
-            leg = duty.make_leg(sym, world.cfg["tok"][sym], side, 100.0, 10.0 if side == "sell" else None, PRICE[sym])
+            leg = duty.make_leg(sym, world.cfg["basket"][sym], side, 100.0, 10.0 if side == "sell" else None, PRICE[sym],
+                                core["pos"].get(sym))
             leg.update(key=duty.new_key(core["gen"], 2, sym, side), st=st, amt="10" if st != "planned" else None)
             legs.append(leg)
         core["epoch"] = 2
@@ -369,7 +383,7 @@ class ReviewFlowTest(unittest.TestCase):
         fake.prompt_answers = [verdict(10, ref="102", change="TKNA cautious again")]
         world.go()
         self.assertTrue(world.argvs)
-        self.assertEqual(world.argvs[0][3], world.cfg["tok"]["TKNA"]["addr"])  # the first leg sells TKNA
+        self.assertEqual(world.argvs[0][3], ADDR["TKNA"])  # the first leg sells TKNA
         self.assertEqual(fake.state["core"]["tx"]["TKNA"], 10)
 
     def test_a_hostile_model_answer_cannot_add_a_token_or_exceed_the_basket(self):
@@ -398,7 +412,7 @@ def seeded_wv(duty, hours_ago=1, px=None, lvl=None, version=3, tw=None, chg=None
 
 def with_stats(world, **changes):
     world.fake.reads["/token-stats"] = {"tokens": [
-        {"address": r["a"], "networkId": r["c"], "priceUsd": PRICE[r["s"]], "priceChangeH24": changes.get(r["s"])}
+        {"address": ADDR[r["s"]], "networkId": r["c"], "priceUsd": PRICE[r["s"]], "priceChangeH24": changes.get(r["s"])}
         for r in SAMPLE_BASKET]}
 
 
@@ -458,7 +472,7 @@ class InvalidationExitTest(unittest.TestCase):
 
     def test_it_sells_down_to_the_models_target_and_ignores_the_spacing(self):
         fake, world = self.go({"m": "price_below", "x": 2.5, "v": 2, "at": OLD}, tw={"TKNA": 20, "TKNB": 30, "TKNC": 10})
-        self.assertEqual([(a[3], a[a.index("--amount-in") + 1]) for a in world.argvs], [(world.cfg["tok"]["TKNA"]["addr"], "500")])
+        self.assertEqual([(a[3], a[a.index("--amount-in") + 1]) for a in world.argvs], [(ADDR["TKNA"], "500")])
         self.assertEqual(fake.state["core"]["tx"]["TKNA"], 20)
         note = [n for n in fake.notes if "| invalidation |" in n["text"]]
         self.assertTrue(note and note[0]["quiet"] and "price below 2.5" in note[0]["text"])
@@ -546,6 +560,163 @@ class UnwindTest(unittest.TestCase):
         self.assertTrue(all(a[3] != "usdc" for a in world.argvs))
         self.assertEqual(len(fake.dones), 1)
         self.assertIn("sold everything", fake.dones[0])
+
+
+BTC_CB = "0x" + "cb" * 20
+
+
+class AddressFromFillTest(unittest.TestCase):
+    """The basket names a symbol and a chain; the contract is learned from what the rail delivered."""
+
+    def world(self, sym, row_sym, row_addr, wallet_row=True, mode="run", search=None, chain=8453, net=8453):
+        duty, fake = install({"HANDLES": ["alice"], "CAPITAL_USD": 1000, "MODE": mode,
+                              "BASKET": [{"s": sym, "c": chain, "w": 50}]})
+        self.duty, self.fake, self.argvs, rows = duty, fake, [], []
+        usdc = {"symbol": "USDC", "chainId": chain, "tokenAddress": "0x" + "dd" * 20, "balance": 1000.0}
+        held = {"symbol": row_sym, "chainId": chain, "tokenAddress": row_addr, "balance": 250.0, "usdValueUsd": 500.0}
+        fake.reads["/duties"] = {"duties": [{"id": "svc-1", "pocket": {"cashUsdc": 1000.0, "funded": True, "holdings": []}}]}
+        fake.reads["/user-assets"] = {"spot": {"available": True, "tokens": [usdc] + ([held] if wallet_row else [])}}
+        fake.reads["/token-stats"] = {"tokens": [{"address": row_addr or "native", "networkId": net, "priceUsd": 2.0}]}
+        fake.reads["/token-search"] = {"tokens": search if search is not None else [
+            {"symbol": row_sym, "address": row_addr or "native", "chainId": chain, "verified": True, "matchedAlias": sym != row_sym}]}
+        fake.reads["/trade-executions"] = {"trades": rows}
+
+        def run(argv, **kwargs):
+            if argv[0] == "bevo-x":
+                return completed(json.dumps({"posts": []}))
+            self.argvs.append(argv)
+            key = argv[-1]
+            tx = "0x" + key[-8:].encode().hex()
+            buy = argv[3] == "usdc"
+            rows.append({"txHash": tx, "amountOut": 250.0 if buy else None, "usdcReceived": None if buy else 450.0,
+                         **({"tokenOutSymbol": row_sym, "tokenOutAddress": row_addr, "chainOut": chain} if buy else {})})
+            fake.statuses[key] = {"state": "executed", "response": {"txHash": tx}}
+            return completed(json.dumps({"status": "accepted"}))
+
+        self.run_acp = run
+
+    def go(self):
+        with mock.patch.object(self.duty.subprocess, "run", self.run_acp):
+            self.duty.run()
+
+    def test_an_alias_is_bought_by_symbol_and_the_delivered_token_is_sold_by_its_address(self):
+        self.world("BTC", "cbBTC", BTC_CB)
+        self.go()
+        self.assertEqual(self.argvs[0][:8], ["acp", "trade", "--token-in", "usdc", "--amount-in", self.argvs[0][5],
+                                             "--token-out", "BTC"])
+        self.assertEqual(self.argvs[0][8:10], ["--chain-out", "8453"])
+        self.assertEqual(self.fake.state["core"]["pos"]["BTC"]["addr"], BTC_CB)
+        self.duty.MODE = "unwind"
+        with self.assertRaises(SystemExit):
+            self.go()
+        sell = self.argvs[1]
+        self.assertEqual((sell[3], sell[4], sell[5]), (BTC_CB, "--chain-in", "8453"))
+        self.assertEqual(sell[sell.index("--amount-in") + 1], "250")
+
+    def test_a_gas_coin_is_matched_by_symbol_and_sold_by_its_ticker(self):
+        self.world("ETH", "ETH", None, search=[], net=1)  # server shape: one native ETH row, on network 1
+        self.go()
+        self.assertEqual(self.argvs[0][7], "ETH")
+        self.assertEqual(self.fake.state["core"]["pos"]["ETH"]["addr"], "native")
+        self.assertIn(("/token-stats", {"tokens": "native:1"}), self.fake.read_log)
+        self.duty.MODE = "unwind"
+        with self.assertRaises(SystemExit):
+            self.go()
+        self.assertEqual(self.argvs[1][3:6], ["ETH", "--chain-in", "8453"])
+
+    def test_a_ticker_bought_with_the_dollar_leg_is_not_mistaken_for_a_gas_coin(self):
+        for raw in (None, "0x" + "e" * 40, "1" * 32):
+            self.world("PEPE", "PEPE", raw, chain=1, net=1)
+            self.fake.reads["/token-search"] = {"tokens": [{"symbol": "PEPE", "address": ADDR["TKNA"], "chainId": 1,
+                                                            "verified": True}]}
+            self.fake.reads["/user-assets"]["spot"]["tokens"][1]["tokenAddress"] = None
+            self.fake.reads["/token-stats"] = {"tokens": [{"address": ADDR["TKNA"], "networkId": 1, "priceUsd": 2.0}]}
+            self.go()
+            pos = self.fake.state["core"]["pos"]["PEPE"]
+            self.assertNotEqual(pos.get("addr"), "native" if raw is None else None)
+            self.assertNotIn(("/token-stats", {"tokens": "native:1"}), self.fake.read_log)
+
+    def test_a_position_without_an_address_takes_it_from_its_holding_row(self):
+        self.world("TKNA", "TKNA", ADDR["TKNA"], mode="unwind")
+        self.fake.state["core"] = dict(self.duty.fresh_core(None, self.duty.settings()[0], self.duty.now()), deployed=True,
+                                       wait_done=True, funded_at=self.duty.iso(self.duty.now()), cash=1000.0, contrib=1000.0,
+                                       pos={"TKNA": {"qty": 250.0, "cost": None, "px": None, "addr": None, "chain": 8453}})
+        with self.assertRaises(SystemExit):
+            self.go()
+        self.assertEqual(self.argvs[0][3], ADDR["TKNA"])
+
+    def test_an_unresolved_position_is_skipped_with_a_reason_never_guessed(self):
+        self.world("TKNA", "TKNA", ADDR["TKNA"], wallet_row=False)
+        core = self.duty.fresh_core(None, self.duty.settings()[0], self.duty.now())
+        core.update(deployed=True, wait_done=True, funded_at=self.duty.iso(self.duty.now()), cash=1000.0, contrib=1000.0, epoch=1,
+                    last_rebalance_at="2020-01-01T00:00:00Z", tx={"TKNA": 50}, cand={"TKNA": {"pct": 0, "n": 2}},
+                    pos={"TKNA": {"qty": 250.0, "cost": None, "px": 2.0, "addr": None, "chain": 8453}})
+        self.fake.state["core"] = core
+        self.go()
+        self.assertEqual([a for a in self.argvs if a[3] != "usdc"], [])
+        self.assertTrue(any("TKNA skipped" in line for line in self.fake.logs))
+        self.assertIsNone(self.fake.state["core"]["pos"]["TKNA"]["addr"])
+
+    def test_unwind_leaves_an_unresolved_position_unsold_and_says_so(self):
+        self.world("TKNA", "TKNA", ADDR["TKNA"], wallet_row=False, mode="unwind")
+        core = self.duty.fresh_core(None, self.duty.settings()[0], self.duty.now())
+        core.update(deployed=True, wait_done=True, funded_at=self.duty.iso(self.duty.now()), cash=1000.0, contrib=1000.0,
+                    pos={"TKNA": {"qty": 250.0, "cost": None, "px": 2.0, "addr": None, "chain": 8453}})
+        self.fake.state["core"] = core
+        with self.assertRaises(SystemExit):
+            self.go()
+        self.assertEqual(self.argvs, [])
+        self.assertIn("Left unsold: TKNA", self.fake.dones[0])
+
+
+class MarketIdTest(unittest.TestCase):
+    """Before a fill the market id is the VERIFIED token-search row on the basket's chain, kept a day."""
+
+    def setUp(self):
+        self.duty, self.fake = install({"HANDLES": ["alice"], "CAPITAL_USD": 1000, "MODE": "watch",
+                                        "BASKET": [{"s": "TKNA", "c": 8453, "w": 50}]})
+        self.cfg = self.duty.settings()[0]
+        self.fake.reads["/token-search"] = {"tokens": [
+            {"symbol": "TKNA", "address": "0x" + "11" * 20, "chainId": 1, "verified": True},
+            {"symbol": "TKNA", "address": "0x" + "22" * 20, "chainId": 8453, "verified": False},
+            {"symbol": "OTHER", "address": "0x" + "33" * 20, "chainId": 8453, "verified": True},
+            {"symbol": "TKNA", "address": ADDR["TKNA"], "chainId": 8453, "verified": True}]}
+        self.core = self.duty.fresh_core(None, self.cfg, self.duty.now())
+
+    def searches(self):
+        return [p for path, p in self.fake.read_log if path == "/token-search"]
+
+    def test_the_verified_row_on_the_right_chain_is_used_and_cached_for_a_day(self):
+        self.assertEqual(self.duty.market_ids(self.cfg, self.core, self.duty.now()), {"TKNA": ADDR["TKNA"]})
+        self.duty.market_ids(self.cfg, self.core, self.duty.now() + timedelta(hours=23))
+        self.assertEqual(self.searches(), [{"q": "TKNA"}])
+        self.duty.market_ids(self.cfg, self.core, self.duty.now() + timedelta(hours=25))
+        self.assertEqual(len(self.searches()), 2)
+
+    def test_no_verified_row_means_no_id_and_a_new_look_next_time(self):
+        self.fake.reads["/token-search"] = {"tokens": [{"symbol": "TKNA", "address": ADDR["TKNA"], "chainId": 8453, "verified": False}]}
+        self.assertEqual(self.duty.market_ids(self.cfg, self.core, self.duty.now()), {"TKNA": None})
+        self.duty.market_ids(self.cfg, self.core, self.duty.now())
+        self.assertEqual(len(self.searches()), 2)
+
+    def test_the_learned_address_wins_and_no_search_is_made(self):
+        self.core["pos"]["TKNA"] = {"qty": 1.0, "addr": "0x" + "44" * 20, "chain": 8453}
+        self.assertEqual(self.duty.market_ids(self.cfg, self.core, self.duty.now()), {"TKNA": "0x" + "44" * 20})
+        self.assertEqual(self.searches(), [])
+
+    def test_a_token_with_no_market_row_is_valued_from_the_wallet_and_the_model_is_told(self):
+        world = World(self.duty, self.fake, cash=1000.0)
+        deployed_core(self.duty, self.cfg, self.fake, tx={"TKNA": 50}, pos={
+            "TKNA": {"qty": 250.0, "cost": 400.0, "px": None, "addr": ADDR["TKNA"], "chain": 8453}})
+        self.fake.reads["/token-stats"] = {"tokens": []}
+        world.fake.reads["/user-assets"] = {"spot": {"available": True, "tokens": [
+            {"symbol": "USDC", "chainId": 8453, "tokenAddress": "0x" + "dd" * 20, "balance": 1000.0},
+            {"symbol": "TKNA", "chainId": 8453, "tokenAddress": ADDR["TKNA"], "balance": 250.0, "usdValueUsd": 500.0}]}}
+        self.fake.state["queue"] = [queued(self.duty, "101")]
+        self.fake.prompt_answers = [verdict(50, 0, 0)]
+        world.go()
+        self.assertAlmostEqual(self.fake.state["core"]["pos"]["TKNA"]["px"], 2.0)
+        self.assertIn("market data MISSING", self.fake.prompts[0]["text"])
 
 
 if __name__ == "__main__":

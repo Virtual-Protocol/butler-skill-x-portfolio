@@ -60,6 +60,10 @@ def make_core(spec, params):
                     pos={"TKNA": {"qty": 1000.0, "cost": 1800.0, "px": 2.0}, "TKNB": {"qty": 1500.0, "cost": 1400.0, "px": 1.0},
                          "TKNC": {"qty": 125.0, "cost": 450.0, "px": 4.0}})
     core.update(resolve(spec.get("set", {}), core["gen"]))
+    chains = {b["s"]: b["c"] for b in params["BASKET"]}
+    for sym, pos in core["pos"].items():  # a position as a fill leaves it: the delivered contract and the chain
+        pos.setdefault("addr", fake_bevo.ADDR.get(sym))
+        pos.setdefault("chain", chains.get(sym))
     return core
 
 
@@ -74,18 +78,23 @@ def prepare(scn, tmp):
     prices = dict({"TKNA": 2.0, "TKNB": 1.0, "TKNC": 4.0}, **scn.get("prices", {}))
     pocket = dict({"cash": 5000.0, "funded": True, "holdings": []}, **scn.get("pocket", {}))
     wallet = dict({"usdc": 6000.0, "tokens": []}, **scn.get("wallet", {}))
-    basket = {b["s"]: b for b in params["BASKET"]}
+    basket = {b["s"]: b for b in params["BASKET"] if b["s"] in fake_bevo.ADDR}
     (fx / "duties.json").write_text(json.dumps({"duties": [{"id": "stub-service-id", "pocket": {
         "cashUsdc": pocket["cash"], "funded": pocket["funded"], "holdings": pocket["holdings"]}}]}))
     tokens = [{"symbol": "USDC", "chainId": 8453, "tokenAddress": "0x" + "00" * 20, "balance": wallet["usdc"]}]
-    tokens += [{"symbol": s, "chainId": basket[s]["c"], "tokenAddress": basket[s]["a"], "balance": q}
+    tokens += [{"symbol": s, "chainId": basket[s]["c"], "tokenAddress": fake_bevo.ADDR[s], "balance": q}
                for s, q in wallet["tokens"]]
     (fx / "user-assets.json").write_text(json.dumps({"spot": {"available": True, "tokens": tokens}}))
     (fx / "token-stats.json").write_text(json.dumps({"tokens": [
-        {"address": b["a"], "networkId": b["c"], "priceUsd": prices[b["s"]]} for b in params["BASKET"]]}))
+        {"address": fake_bevo.ADDR[s], "networkId": b["c"], "priceUsd": prices[s]} for s, b in basket.items()]}))
+    (fx / "token-search.json").write_text(json.dumps({"tokens": [
+        {"symbol": s, "address": fake_bevo.ADDR[s], "chainId": b["c"], "verified": True} for s, b in basket.items()]}))
     rows = []
     for row in resolve(scn.get("executions", []), gen):  # the server's row names the settled hash, not the key
         key = row.pop("idempotencyKey", None)
+        if key and key.split(":")[-2] == "buy":  # a buy row names what the rail delivered
+            sym = key.split(":")[-3]
+            row = dict({"tokenOutSymbol": sym, "tokenOutAddress": fake_bevo.ADDR[sym], "chainOut": basket[sym]["c"]}, **row)
         rows.append(dict(row, txHash="0x" + hashlib.sha256(key.encode()).hexdigest()) if key else row)
     (fx / "trade-executions.json").write_text(json.dumps({"trades": rows, "nextCursor": None, "hasMore": False}))
     ticks = [{"kind": "timer", "at": (NOW + timedelta(minutes=i)).strftime("%Y-%m-%dT%H:%M:%SZ"), "intervalSeconds": 3600}
@@ -128,7 +137,8 @@ def check(scn, params, code, actions, state, output):
     if code != 0 or actions is None:
         return ["replay exited %s\n%s" % (code, output[-1500:])]
     want = scn.get("expect", {})
-    book = {b["a"]: b for b in params["BASKET"]}
+    chains = {b["s"]: str(b["c"]) for b in params["BASKET"]}
+    owned = {a: s for s, a in fake_bevo.ADDR.items()}
     acp = [a for a in actions if a.get("call") == "acp"]
     notes = [a for a in actions if a.get("call") == "notify"]
     sides = []
@@ -136,12 +146,12 @@ def check(scn, params, code, actions, state, output):
         argv = action["argv"]
         buy = argv[:4] == ["acp", "trade", "--token-in", "usdc"]
         sell = argv[:3] == ["acp", "trade", "--token-in"] and argv[4] == "--chain-in" and argv[-4:-2] == ["--token-out", "usdc"]
-        address = argv[argv.index("--token-out") + 1] if buy else argv[3]
-        if not (buy or sell) or address not in book or argv[-2] != "--idempotency-key" or not KEY_RE.match(argv[-1]):
+        sym = argv[argv.index("--token-out") + 1] if buy else owned.get(argv[3])  # buys name a symbol, sells a learned contract
+        if not (buy or sell) or sym not in chains or argv[-2] != "--idempotency-key" or not KEY_RE.match(argv[-1]):
             problems.append("an acp call has the wrong shape: %s" % argv)
             continue
         chain = argv[argv.index("--chain-out" if buy else "--chain-in") + 1]
-        if chain != str(book[address]["c"]):
+        if chain != chains[sym]:
             problems.append("wrong chain in %s" % argv)
         sides.append("buy" if buy else "sell")
     exp = want.get("acp", {})

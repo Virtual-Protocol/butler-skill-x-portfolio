@@ -15,10 +15,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SAMPLE_BASKET = [
-    {"s": "TKNA", "c": 8453, "a": "0x" + "a1" * 20, "w": 40},
-    {"s": "TKNB", "c": 8453, "a": "0x" + "b2" * 20, "w": 30},
-    {"s": "TKNC", "c": 1, "a": "0x" + "c3" * 20, "w": 10},
+    {"s": "TKNA", "c": 8453, "w": 40},
+    {"s": "TKNB", "c": 8453, "w": 30},
+    {"s": "TKNC", "c": 1, "w": 10},
 ]
+# The contract each sample token settles on, as a trade row or a wallet row would report it (never filed in PARAMS).
+ADDR = {"TKNA": "0x" + "a1" * 20, "TKNB": "0x" + "b2" * 20, "TKNC": "0x" + "c3" * 20}
 SAMPLE_PARAMS = {"HANDLES": ["alice", "bob", "carol"], "CAPITAL_USD": 5000, "BASKET": SAMPLE_BASKET,
                  "REBALANCE_HOURS": 24, "MODE": "run"}
 
@@ -45,7 +47,7 @@ class FakeBevo:
         self.state = State()
         self.logs, self.notes, self.fails, self.dones = [], [], [], []
         self.reads, self.statuses, self.prompts, self.sent = {}, {}, [], []
-        self.prompt_answers = []
+        self.prompt_answers, self.read_log = [], []
 
     def log(self, message):
         self.logs.append(str(message))
@@ -71,6 +73,7 @@ class FakeBevo:
         return iter(())
 
     def read(self, path, params=None):
+        self.read_log.append((path, params))
         value = self.reads.get(path)
         if isinstance(value, BaseException):
             raise value

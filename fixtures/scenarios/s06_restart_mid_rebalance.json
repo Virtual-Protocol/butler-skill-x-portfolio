@@ -18,7 +18,7 @@
         "legs": [
           {
             "sym": "TKNA",
-            "addr": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "ref": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
             "chain": 8453,
             "side": "sell",
             "usd_plan": 1500,
@@ -35,7 +35,7 @@
           },
           {
             "sym": "TKNB",
-            "addr": "0xb2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+            "ref": null,
             "chain": 8453,
             "side": "buy",
             "usd_plan": 1000,

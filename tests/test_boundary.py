@@ -40,9 +40,9 @@ class BoundaryTest(unittest.TestCase):
 
     def test_model_names_are_confined_to_that_function(self):
         inner = assigned_names(function("read_posts_with_model"))
-        self.assertTrue(inner and all(n.startswith("mo_") for n in inner), inner)
+        self.assertTrue(inner and all(n.startswith("model_") for n in inner), inner)
         outside = [n.id for top in TREE.body if not (isinstance(top, ast.FunctionDef) and top.name == "read_posts_with_model")
-                   for n in ast.walk(top) if isinstance(n, ast.Name) and n.id.startswith("mo_")]
+                   for n in ast.walk(top) if isinstance(n, ast.Name) and n.id.startswith("model_")]
         self.assertEqual(outside, [])
 
     def test_the_model_function_returns_only_numbers(self):
@@ -77,7 +77,7 @@ class BoundaryTest(unittest.TestCase):
             c.value for c in ast.walk(TREE) if isinstance(c, ast.Constant) and isinstance(c.value, str) and " " not in c.value))))
 
     def test_no_note_asks_a_question(self):
-        speaking = {"note", "stamp", "bevo.notify", "bevo.done"}
+        speaking = {"note", "notify_once", "bevo.notify", "bevo.done"}
         seen = 0
         for call in (n for n in ast.walk(TREE) if isinstance(n, ast.Call) and ast.unparse(n.func) in speaking):
             for node in ast.walk(call):
@@ -88,7 +88,7 @@ class BoundaryTest(unittest.TestCase):
         self.assertGreater(seen, 20)
 
     def test_size_budget(self):
-        self.assertLessEqual(len(SOURCE), 63000)  # the server's cap is 65536
+        self.assertLessEqual(len(SOURCE), 85000)  # the server cap is 90000; this leaves a fork room to grow
 
     def test_the_recipe_has_no_default_token_chain_or_cap(self):
         recipe = json.loads((ROOT / "recipe.json").read_text())
@@ -111,7 +111,7 @@ class ContainerFactsTest(unittest.TestCase):
         for name in ("taintedMoney", "badKeys", "selfLoops", "retiredCalls", "badBevoImports", "literalMoneyAmounts"):
             self.assertEqual(facts[name], [], name)
         self.assertTrue(facts["shellMoneyCalls"] and all(c["keyed"] for c in facts["shellMoneyCalls"]))
-        self.assertTrue({r["path"] for r in facts["readPaths"]} <= {"/duties", "/user-assets", "/token-stats", "/trade-executions"})
+        self.assertTrue({r["path"] for r in facts["readPaths"]} <= {"/duties", "/user-assets", "/token-stats", "/token-search", "/trade-executions"})
 
 
 if __name__ == "__main__":
