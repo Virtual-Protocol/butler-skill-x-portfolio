@@ -1,5 +1,9 @@
 # Changelog
 
+## 3
+
+- Reports a status line for the owner's Duties row, which read "nothing yet": "Value $1,023.45 · next review in 42 min", "Waiting for funds · next review 9am", "Buys halted: down 30% · …", "Selling everything · …". `recipe.json` `status` words each state. Supersedes `x-portfolio@2`; a filed duty keeps its code until re-filed, and the registry's `ref` must move to a new tag (`v3`) for this to ship.
+
 ## 2
 
 - Any number of X accounts: `HANDLES` takes one or more. The duty reads up to 5 accounts per review and rotates through the rest, oldest read first, so every account is read in turn and the X search quota holds; coverage and status say so.

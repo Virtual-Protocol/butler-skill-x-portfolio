@@ -1,6 +1,6 @@
 {
   "id": "x-portfolio",
-  "version": 2,
+  "version": 3,
   "description": "Runs a spot fund like a portfolio manager: weighs one or more X accounts by track record, checks views against the market, relates tokens by category and macro, holds cash when poor. No post trades.",
   "keywords": [
     "portfolio",
@@ -21,7 +21,8 @@
     "timer"
   ],
   "supersedes": [
-    "x-portfolio@1"
+    "x-portfolio@1",
+    "x-portfolio@2"
   ],
   "keys": [
     "xp:<duty>:g<gen>:e<epoch>:<SYMBOL>:<buy|sell>:a0"
@@ -97,5 +98,16 @@
         "description": "run trades the portfolio; watch keeps reading and reporting but places no trade; unwind sells everything the portfolio bought, then finishes; it has a default, so do not ask about it"
       }
     }
+  },
+  "status": {
+    "starting": "First review {next}",
+    "unfunded": "Waiting for funds · next review {next}",
+    "trading": "Trades settling · next review {next}",
+    "halted": "Buys halted: down 30% · next review {next}",
+    "unwinding": "Selling everything · next review {next}",
+    "paused": "Paused: the settings need fixing",
+    "done": "Sold everything: ${value} in USDC",
+    "run": "Value ${value} · next review {next}",
+    "watch": "Watching, ${value} · next review {next}"
   }
 }

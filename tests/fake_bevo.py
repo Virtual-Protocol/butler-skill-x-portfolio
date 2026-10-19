@@ -48,9 +48,13 @@ class FakeBevo:
         self.logs, self.notes, self.fails, self.dones = [], [], [], []
         self.reads, self.statuses, self.prompts, self.sent = {}, {}, [], []
         self.prompt_answers, self.read_log = [], []
+        self.rows = []  # bevo.status() reports: the Duties row
 
     def log(self, message):
         self.logs.append(str(message))
+
+    def status(self, next, last=None, next_at=None, **values):
+        self.rows.append({"state": str(next), "values": values})
 
     def notify(self, text, quiet=False, push=None):
         self.notes.append({"text": str(text), "quiet": bool(quiet), "push": push})

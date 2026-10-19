@@ -1,9 +1,7 @@
-"""A spot portfolio over the owner's confirmed basket, managed from what one or more X accounts post and
-the market (up to 5 are read per review, the rest in rotation). A persistent worldview is updated
-incrementally; the model proposes weights, Python checks and trades. A change needs two reviews.
-Settings: HANDLES, CAPITAL_USD, BASKET, REBALANCE_HOURS, MODE.
+"""A spot portfolio over the owner's confirmed basket, steered by what X accounts post and the
+market. The model updates a worldview and proposes weights; Python checks and trades. A change
+needs two reviews. See README.md.
 """
-
 import bevo
 import json
 import math
@@ -1639,6 +1637,7 @@ def unwind(core, cfg, duty, wallet, market, moment):
     stuck = core.get("stuck") or {}
     unsold = ", ".join("%s%s" % (symbol, " (refused)" if symbol in stuck else "")
                        for symbol in sorted(core["pos"]))
+    bevo.status("done", value=round(core["cash"], 2))
     bevo.done("%s sold everything: back in USDC %s (%s%s on %s put in). Left unsold: %s." % (
         NAME, format_usd(core["cash"]), "+" if pnl >= 0 else "-", format_usd(abs(pnl)),
         format_usd(core["contrib"]), unsold or "none"))
@@ -1666,6 +1665,10 @@ def log_status(core, cfg, duty, market, moment):
             "e%d" % core["pending"]["epoch"] if core["pending"] else "none",
             "yes" if core["halted"] else "no",
             *(bevo.state.get("rot") or [0, len(cfg["handles"])]), coverage))
+    mode = cfg["mode"]
+    bevo.status("unwinding" if mode == "unwind" else "unfunded" if not (duty or {}).get("funded") else
+                "trading" if core["pending"] else "halted" if core["halted"] else
+                "watch" if mode == "watch" else "run", value=round(nav, 2))
 
 
 def report_review(view, core, cfg, funded):
@@ -1817,6 +1820,7 @@ def run():
                     "x-portfolio needs a settings fix: %s." % "; ".join(problems[:3]),
                     "x-portfolio needs a settings fix")
         say("idle: " + "; ".join(problems[:3]))
+        bevo.status("paused")
         return
     duty, core = my_duty(), bevo.state.get("core")
     if not (isinstance(core, dict) and core.get("gen")):
