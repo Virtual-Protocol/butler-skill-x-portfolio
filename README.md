@@ -29,7 +29,7 @@ Before filing, the chat turn reads each account's last 30 days (`bevo-x search -
 | Setting | Meaning |
 | --- | --- |
 | `HANDLES` | One or more X handles; up to 5 read per review, the rest in rotation. |
-| `CAPITAL_USD` | Dollars behind the portfolio, 100 to 10000. |
+| `CAPITAL_USD` | Dollars behind the portfolio, at least 100. |
 | `BASKET` | 1 to 8 entries `{s: symbol, c: chain id, w: starting weight %}`; weights add to 100 or less. |
 | `REBALANCE_HOURS` | Fewest hours between rebalances, default 24; the first deployment and a broken-level sale are exempt. |
 | `MODE` | `run` trades; `watch` only reads and reports; `unwind` sells the book, then finishes. |

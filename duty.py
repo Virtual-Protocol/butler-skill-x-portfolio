@@ -285,8 +285,8 @@ def settings():
             handles.append(handle)
     if not handles:
         problems.append("HANDLES needs at least one account")
-    if to_number(CAPITAL_USD) is None or not 100 <= to_number(CAPITAL_USD) <= 10000:
-        problems.append("CAPITAL_USD needs 100 to 10000")
+    if to_number(CAPITAL_USD) is None or to_number(CAPITAL_USD) < 100:
+        problems.append("CAPITAL_USD needs at least 100")
     rows = BASKET if isinstance(BASKET, list) else []
     if not 1 <= len(rows) <= 8:
         problems.append("BASKET needs 1 to 8 tokens")
